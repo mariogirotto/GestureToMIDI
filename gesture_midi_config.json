@@ -1,0 +1,122 @@
+{
+  "open_left": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 45,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "closed_left": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 48,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "index_left": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 50,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "peace_left": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 52,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "rock_left": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 55,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "thumb_left": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 57,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "open_right": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 57,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "closed_right": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 60,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "index_right": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 62,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "peace_right": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 64,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "rock_right": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 67,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  },
+  "thumb_right": {
+    "message_type": "note",
+    "channel": 0,
+    "note_or_cc": 69,
+    "value_on": 127,
+    "value_off": 0,
+    "continuous": false,
+    "use_rotation": false,
+    "rotation_axis": "pitch"
+  }
+}
