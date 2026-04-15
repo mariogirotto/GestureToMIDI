@@ -1,5 +1,5 @@
 {
-  "open_left": {
+  "abierta_left": {
     "message_type": "note",
     "channel": 0,
     "note_or_cc": 45,
@@ -9,7 +9,7 @@
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "closed_left": {
+  "cerrada_left": {
     "message_type": "note",
     "channel": 0,
     "note_or_cc": 48,
@@ -19,7 +19,7 @@
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "index_left": {
+  "indice_left": {
     "message_type": "note",
     "channel": 0,
     "note_or_cc": 50,
@@ -29,27 +29,7 @@
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "peace_left": {
-    "message_type": "note",
-    "channel": 0,
-    "note_or_cc": 52,
-    "value_on": 127,
-    "value_off": 0,
-    "continuous": false,
-    "use_rotation": false,
-    "rotation_axis": "pitch"
-  },
-  "rock_left": {
-    "message_type": "note",
-    "channel": 0,
-    "note_or_cc": 55,
-    "value_on": 127,
-    "value_off": 0,
-    "continuous": false,
-    "use_rotation": false,
-    "rotation_axis": "pitch"
-  },
-  "thumb_left": {
+  "abierta_right": {
     "message_type": "note",
     "channel": 0,
     "note_or_cc": 57,
@@ -59,17 +39,7 @@
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "open_right": {
-    "message_type": "note",
-    "channel": 0,
-    "note_or_cc": 57,
-    "value_on": 127,
-    "value_off": 0,
-    "continuous": false,
-    "use_rotation": false,
-    "rotation_axis": "pitch"
-  },
-  "closed_right": {
+  "cerrada_right": {
     "message_type": "note",
     "channel": 0,
     "note_or_cc": 60,
@@ -79,7 +49,7 @@
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "index_right": {
+  "indice_right": {
     "message_type": "note",
     "channel": 0,
     "note_or_cc": 62,
@@ -89,7 +59,7 @@
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "peace_right": {
+  "Viva Peron_right": {
     "message_type": "note",
     "channel": 0,
     "note_or_cc": 64,
@@ -99,24 +69,32 @@
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "rock_right": {
+  "Viva Peron_left": {
     "message_type": "note",
     "channel": 0,
-    "note_or_cc": 67,
+    "note_or_cc": 52,
     "value_on": 127,
     "value_off": 0,
     "continuous": false,
     "use_rotation": false,
     "rotation_axis": "pitch"
   },
-  "thumb_right": {
-    "message_type": "note",
-    "channel": 0,
-    "note_or_cc": 69,
-    "value_on": 127,
-    "value_off": 0,
-    "continuous": false,
-    "use_rotation": false,
-    "rotation_axis": "pitch"
+  "_rotation_cc": {
+    "Left": {
+      "pitch": null,
+      "yaw": null,
+      "roll": [
+        0,
+        1
+      ]
+    },
+    "Right": {
+      "pitch": null,
+      "yaw": null,
+      "roll": [
+        0,
+        2
+      ]
+    }
   }
 }

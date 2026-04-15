@@ -34,6 +34,7 @@ class GestureTemplate:
     pose_features: np.ndarray
     hand_label: str
     threshold: float = 0.4
+    rotation_specific: bool = False
 
 @dataclass
 class RotationCalibration:
@@ -252,7 +253,8 @@ class GestureRecognizer:
             name=name, 
             pose_features=features, 
             hand_label=hand_label,
-            threshold=0.5 if rotation_specific else 0.4
+            threshold=0.5 if rotation_specific else 0.4,
+            rotation_specific=rotation_specific
         )
 
         for i, t in enumerate(self.templates):
@@ -312,7 +314,8 @@ class GestureRecognizer:
                 'name': t.name,
                 'hand_label': t.hand_label,
                 'pose_features': t.pose_features.tolist(),
-                'threshold': t.threshold
+                'threshold': t.threshold,
+                'rotation_specific': t.rotation_specific
             })
         with open(filename, 'w') as f:
             json.dump(data, f, indent=2)
@@ -329,7 +332,8 @@ class GestureRecognizer:
                     name=item['name'],
                     hand_label=item['hand_label'],
                     pose_features=np.array(item['pose_features'], dtype=np.float32),
-                    threshold=item['threshold']
+                    threshold=item.get('threshold', 0.4),
+                    rotation_specific=item.get('rotation_specific', False)
                 ))
             print(f"Loaded {len(self.templates)} templates")
         except FileNotFoundError:
@@ -453,11 +457,16 @@ class GestureMIDIMapper:
         try:
             with open(CONFIG_FILE, 'r') as f:
                 data = json.load(f)
-                for name, m in data.items():
-                    # Handle legacy mappings without rotation_axis
-                    if 'rotation_axis' not in m:
-                        m['rotation_axis'] = 'pitch'
-                    self.mappings[name] = MIDIMapping(**m)
+            
+            # Extract rotation CC config if present
+            if '_rotation_cc' in data:
+                self.rotation_cc = data.pop('_rotation_cc')
+            
+            for name, m in data.items():
+                # Handle legacy mappings without rotation_axis
+                if 'rotation_axis' not in m:
+                    m['rotation_axis'] = 'pitch'
+                self.mappings[name] = MIDIMapping(**m)
 
             # Load rotation calibration if exists
             try:
@@ -477,6 +486,8 @@ class GestureMIDIMapper:
 
     def save_mappings(self):
         data = {name: asdict(m) for name, m in self.mappings.items()}
+        # Include rotation CC configuration
+        data['_rotation_cc'] = self.rotation_cc
         with open(CONFIG_FILE, 'w') as f:
             json.dump(data, f, indent=2)
 
