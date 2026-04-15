@@ -168,8 +168,9 @@ class HandFeatureExtractor:
 
         return wrist, x_axis, y_axis, z_axis
 
-    def get_rotation_angles(self, landmarks, hand_label: str = None) -> Tuple[float, float, float]:
-        """Extract stable Euler angles using rotation matrix decomposition"""
+    def get_rotation_angles(self, landmarks, hand_label: str = None, 
+                             discontinuity_offsets: Dict[str, float] = None) -> Tuple[float, float, float]:
+        """Extract stable Euler angles with configurable discontinuity positions"""
         wrist, x_axis, y_axis, z_axis = self.get_hand_coordinate_system(landmarks, hand_label)
 
         # Build rotation matrix with camera coordinate system
@@ -177,27 +178,53 @@ class HandFeatureExtractor:
         # We need to map our hand axes to this
         R = np.column_stack([x_axis, y_axis, z_axis])
 
-        # Extract angles using robust method that avoids gimbal lock
+        # Extract raw angles using robust method that avoids gimbal lock
         # This uses the full rotation matrix to calculate stable angles
 
         # Pitch: Rotation around X-axis (tilting hand up/down)
         # Calculate from Y and Z components
         pitch = math.atan2(-R[2, 1], math.sqrt(R[0, 1]**2 + R[1, 1]**2))
-        pitch_norm = (pitch + math.pi/2) / math.pi
-        pitch_norm = float(np.clip(pitch_norm, 0.0, 1.0))
 
         # Yaw: Rotation around Y-axis (turning hand left/right)
         # Use X and Z components of the forward vector
         yaw = math.atan2(R[0, 2], R[2, 2])
-        yaw_norm = (yaw + math.pi) / (2 * math.pi)
-        yaw_norm = float(np.clip(yaw_norm, 0.0, 1.0))
 
         # Roll: Rotation around Z-axis (twisting hand/tilting side to side)
         # Calculate from X-axis orientation relative to horizontal plane
         # Use the angle between hand's X-axis and camera's horizontal plane
         roll = math.atan2(R[1, 0], R[0, 0])
-        roll_norm = (roll + math.pi) / (2 * math.pi)
-        roll_norm = float(np.clip(roll_norm, 0.0, 1.0))
+
+        # Default offsets (0 = no shift, discontinuity at original position)
+        offsets = discontinuity_offsets or {}
+
+        def normalize_with_offset(angle, offset=0.0):
+            """
+            Normalize angle to 0-1 with configurable discontinuity offset.
+            offset: 0.0 = discontinuity at -π/π (default)
+                    0.5 = discontinuity at 0 (neutral position)
+                    Any value 0-1 rotates the seam position
+            """
+            # Shift angle by offset*2π before wrapping
+            shifted = angle + (offset * 2 * math.pi)
+            
+            # Wrap to -π to π range
+            while shifted > math.pi:
+                shifted -= 2 * math.pi
+            while shifted < -math.pi:
+                shifted += 2 * math.pi
+                
+            # Now normalize to 0-1 (discontinuity is at the shifted position)
+            normalized = (shifted + math.pi) / (2 * math.pi)
+            return float(np.clip(normalized, 0.0, 1.0))
+
+        # Get offsets for each axis (default 0)
+        pitch_offset = offsets.get('pitch', 0.0)
+        yaw_offset = offsets.get('yaw', 0.0)
+        roll_offset = offsets.get('roll', 0.0)
+
+        pitch_norm = normalize_with_offset(pitch, pitch_offset)
+        yaw_norm = normalize_with_offset(yaw, yaw_offset)
+        roll_norm = normalize_with_offset(roll, roll_offset)
 
         return pitch_norm, yaw_norm, roll_norm
 
@@ -517,6 +544,14 @@ class GestureMIDIMapper:
             'Right': {'pitch': None, 'yaw': None, 'roll': None}
         }
 
+        # NEW: Discontinuity offset configuration (0-1 range)
+        # 0.0 = default (seam at -180°/180°)
+        # 0.5 = seam at 0° (neutral position)
+        self.discontinuity_offsets = {
+            'Left': {'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
+            'Right': {'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0}
+        }
+
         # Performance tracking
         self.frame_count = 0
         self.last_fps_time = time.time()
@@ -571,6 +606,13 @@ class GestureMIDIMapper:
             if '_rotation_cc' in data:
                 self.rotation_cc = data.pop('_rotation_cc')
 
+            # Load discontinuity offsets if present
+            if '_discontinuity_offsets' in data:
+                loaded_offsets = data.pop('_discontinuity_offsets')
+                for hand in ['Left', 'Right']:
+                    if hand in loaded_offsets:
+                        self.discontinuity_offsets[hand].update(loaded_offsets[hand])
+
             for name, m in data.items():
                 # Handle legacy mappings without rotation_axis
                 if 'rotation_axis' not in m:
@@ -597,6 +639,8 @@ class GestureMIDIMapper:
         data = {name: asdict(m) for name, m in self.mappings.items()}
         # Include rotation CC configuration
         data['_rotation_cc'] = self.rotation_cc
+        # Include discontinuity offsets
+        data['_discontinuity_offsets'] = self.discontinuity_offsets
         with open(CONFIG_FILE, 'w') as f:
             json.dump(data, f, indent=2)
 
@@ -656,15 +700,18 @@ class GestureMIDIMapper:
         return annotated_image
 
     def process_hand(self, landmarks, hand_label: str, frame):
-        """Process hand and return gesture + rotation data"""
+        """Process hand with configurable discontinuity offsets"""
         pose_features = self.recognizer.feature_extractor.get_rotation_invariant_features(landmarks)
 
         global_features = self.recognizer.feature_extractor.get_global_features(landmarks, hand_label)
 
-        pitch, yaw, roll = self.recognizer.get_smooth_rotation(
-            hand_label, 
-            self.recognizer.feature_extractor.get_rotation_angles(landmarks, hand_label)
+        # Pass discontinuity offsets to rotation calculation
+        offsets = self.discontinuity_offsets[hand_label]
+        raw_angles = self.recognizer.feature_extractor.get_rotation_angles(
+            landmarks, hand_label, discontinuity_offsets=offsets
         )
+        
+        pitch, yaw, roll = self.recognizer.get_smooth_rotation(hand_label, raw_angles)
 
         if self.calibration_mode and self.calibration_target:
             if hand_label == self.calibration_target['hand']:
@@ -764,7 +811,7 @@ class GestureMIDIMapper:
 
     def run(self):
         print("\n=== Gesture MIDI Controller (Optimized) ===")
-        print("Keys: [R]ecord  [S]ave  [M]ap  [C]C Config  [A]xis Calibrate  [Q]uit")
+        print("Keys: [R]ecord  [S]ave  [M]ap  [C]C Config  [A]xis Calibrate  [D]iscontinuity Offset  [Q]uit")
         print("\nOptimizations enabled:")
         print("- VIDEO mode for MediaPipe")
         print("- Frame skipping for detection")
@@ -772,6 +819,7 @@ class GestureMIDIMapper:
         print("- MIDI throttling")
         print("- Threaded MIDI output")
         print("- Buffer size minimized")
+        print("- Configurable discontinuity offsets for rotation")
         print("")
 
         self.setup()
@@ -820,6 +868,8 @@ class GestureMIDIMapper:
                             self.configure_rotation_cc()
                         elif key == ord('a'):
                             self.calibrate_rotation_axis()
+                        elif key == ord('d'):
+                            self.configure_discontinuity_offset()
                         else:
                             # Debug: show what key was pressed
                             print(f"Key pressed: {chr(key) if 32 <= key <= 126 else key}")
@@ -894,6 +944,16 @@ class GestureMIDIMapper:
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             cv2.putText(display_frame, "Gesture MIDI (Optimized)", (10, 60), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+            # Show discontinuity offset info
+            y_offset = 90
+            for hand in ['Left', 'Right']:
+                roll_offset = self.discontinuity_offsets[hand]['roll']
+                if roll_offset != 0.0:
+                    seam_degrees = int((roll_offset * 360) - 180)
+                    cv2.putText(display_frame, f"{hand} Roll seam: {seam_degrees}°", 
+                               (10, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 0), 1)
+                    y_offset += 20
 
             if self.calibration_mode:
                 cv2.putText(display_frame, "CALIBRATION MODE", (10, 400), 
@@ -984,7 +1044,11 @@ class GestureMIDIMapper:
                             current_hand = 'Left' if idx == 0 else 'Right'
 
                         if current_hand == hand:
-                            pitch, yaw, roll = self.recognizer.feature_extractor.get_rotation_angles(landmarks, hand)
+                            # Use current discontinuity offsets during calibration
+                            offsets = self.discontinuity_offsets[hand]
+                            pitch, yaw, roll = self.recognizer.feature_extractor.get_rotation_angles(
+                                landmarks, hand, discontinuity_offsets=offsets
+                            )
                             current_val = {'pitch': pitch, 'yaw': yaw, 'roll': roll}[axis]
 
                             # Draw landmarks
@@ -1050,6 +1114,50 @@ class GestureMIDIMapper:
 
         print(f"\nCalibration saved for {hand} hand {axis} axis!")
         print("This calibration will be used for both gesture-based CC and global rotation CC.")
+
+    def configure_discontinuity_offset(self):
+        """Set where the 0-1 discontinuity occurs for each rotation axis"""
+        print("\n=== Configure Discontinuity Offset ===")
+        print("This controls where the rotation value 'jumps' from 1 to 0.")
+        print("Offset 0.0 = jump at ±180° (default)")
+        print("Offset 0.5 = jump at 0° (neutral position)")
+        print("Useful for: placing the discontinuity where your hand never goes")
+        
+        hand = input("Hand (Left/Right): ").capitalize()
+        if hand not in ['Left', 'Right']:
+            return
+            
+        axis = input("Axis (pitch/yaw/roll): ").lower()
+        if axis not in ['pitch', 'yaw', 'roll']:
+            return
+            
+        current = self.discontinuity_offsets[hand][axis]
+        print(f"\nCurrent offset for {hand} {axis}: {current:.2f}")
+        
+        # Show where the seam currently is
+        current_seam = (current * 360) - 180
+        print(f"Current discontinuity position: {current_seam:+.0f}°")
+        
+        try:
+            new_offset = float(input("New offset (0.0-1.0): "))
+            new_offset = max(0.0, min(1.0, new_offset))  # Clamp to 0-1
+            self.discontinuity_offsets[hand][axis] = new_offset
+            
+            # Calculate where the seam is now for user feedback
+            seam_degrees = (new_offset * 360) - 180
+            print(f"\nDiscontinuity moved to {seam_degrees:+.0f}°")
+            print(f"(Values jump from 1→0 when hand passes {seam_degrees:+.0f}°)")
+            
+            # Show example ranges
+            print(f"\nExample: With hand at neutral (0°), value is:")
+            # Calculate what 0° maps to with this offset
+            neutral_normalized = (0.5 - new_offset) % 1.0
+            if neutral_normalized > 0.5:
+                neutral_normalized -= 1.0
+            print(f"  ~{neutral_normalized * 127:.0f} (MIDI 0-127)")
+            
+        except ValueError:
+            print("Invalid input. Please enter a number between 0.0 and 1.0")
 
     def configure_rotation_cc(self):
         """Setup 3-axis rotation as continuous CC"""
